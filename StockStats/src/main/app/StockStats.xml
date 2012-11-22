@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:twitter="http://www.mulesoft.org/schema/mule/twitter" xmlns:jersey="http://www.mulesoft.org/schema/mule/jersey" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" version="EE-3.3.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/twitter http://www.mulesoft.org/schema/mule/twitter/current/mule-twitter.xsd 
+http://www.mulesoft.org/schema/mule/jersey http://www.mulesoft.org/schema/mule/jersey/current/mule-jersey.xsd 
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd 
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd ">
+    <spring:beans>
+    	
+    	<spring:bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    		<spring:property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_FALLBACK" /> 
+    	</spring:bean>
+    	
+        <spring:bean id="stackStatsResource" class="stockstats.impl.StockStatsResourceImpl">
+            <spring:property name="stockService">
+                <spring:bean class="stockstats.impl.stocklytics.StocklyticsStockService">
+                    <spring:constructor-arg index="0" value="${stockstats.stocklyticsApiKey}"/>
+                </spring:bean>
+            </spring:property>
+            <spring:property name="sentimentService">
+                <spring:bean class="stockstats.impl.sentiment140.Sentiment140SentimentService">
+                    <spring:constructor-arg index="0" value="${stockstats.sentiment140ApiKey}"/>
+                </spring:bean>
+            </spring:property>
+        </spring:bean>
+    </spring:beans>
+    
+    <twitter:config name="Twitter" consumerKey="${stockstats.twitterConsumerKey}" 
+    		consumerSecret="${stockstats.twitterConsumerSecret}" 
+    		useSSL="false" 
+    		doc:name="Twitter"/>
+    
+    <flow name="StockServiceFlow" doc:name="StockServiceFlow">
+        <http:inbound-endpoint exchange-pattern="request-response" 
+        		host="localhost" 
+        		port="8180" 
+        		path="api" 
+        		doc:name="HTTP"/>
+        <jersey:resources doc:name="REST">
+            <component>
+            	<spring-object bean="stackStatsResource"/>
+            	<binding interface="stockstats.impl.TwitterService" method="search">
+            		<vm:outbound-endpoint exchange-pattern="request-response"
+            				path="twitterFlowRequest" />
+            	</binding>
+            </component>
+        </jersey:resources>
+    </flow>
+    
+    <flow name="TwitterFlow" doc:name="TwitterFlow">
+        <vm:inbound-endpoint exchange-pattern="request-response" 
+        		path="twitterFlowRequest"
+        		doc:name="VM"/>
+        <custom-processor class="stockstats.impl.mule.TwitterRequestProcessor" 
+        		name="TwitterRequestProcessor" 
+        		doc:name="TwitterRequestProcessor"/>
+        <twitter:search config-ref="Twitter" 
+        		query="#[header:invocation:stock]" 
+        		page="#[header:invocation:page]" 
+        		rpp="#[header:invocation:rpp]" 
+        		since="#[header:invocation:since]" 
+        		until="#[header:invocation:until]" 
+        		doc:name="Twitter"/>
+        <logger message="#[payload:]" 
+        		level="INFO" 
+        		doc:name="Logger"/>
+        <custom-processor class="stockstats.impl.mule.TwitterResponseProcessor" 
+        		name="TwitterResponseProcessor" 
+        		doc:name="TwitterResponseProcessor"/>
+        <logger message="#[payload:]" 
+        		level="INFO" 
+        		doc:name="Logger"/>
+    </flow>
+</mule>
