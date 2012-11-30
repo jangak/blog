@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.mule.tooling.runtime.muleServerLaunchType">
+<stringAttribute key="bad_container_name" value="\StockStats\t"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="StockStats"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-XX:PermSize=128M -XX:MaxPermSize=256M -Dstockstats.stocklyticsApiKey=HERE -Dstockstats.sentiment140ApiKey=HERE -Dstockstats.twitterConsumerKey=bogus -Dstockstats.twitterConsumerSecret=bogus"/>
+</launchConfiguration>
